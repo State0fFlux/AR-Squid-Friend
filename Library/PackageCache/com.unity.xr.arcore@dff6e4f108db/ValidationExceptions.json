@@ -1,0 +1,10 @@
+{
+  "ErrorExceptions": [
+    {
+      "ValidationTest": "API Validation",
+      "ExceptionMessage": "New assembly \u0022Unity.XR.ARCore.Editor.Tests\u0022 may only be added in a new minor or major version.",
+      "PackageVersion": "6.0.5"
+    }
+  ],
+  "WarningExceptions": []
+}
