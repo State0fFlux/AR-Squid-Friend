@@ -95,19 +95,19 @@ public class SurfaceOfRevolution : MonoBehaviour
         // You will want to use curvePoints and subdivisions variables, and you will
         // want to change the size of these arrays
         int numSlices = curvePoints.Count - 1;
-        int numPoints = curvePoints.Count * subdivisions;
+        int numPoints = curvePoints.Count * (subdivisions + 1); // extra point for each curve because duplicating start/end vertex
 
         // Initialize stuff
         vertices = new Vector3[numPoints];
         normals = new Vector3[numPoints];
         UVs = new Vector2[numPoints];
 
-        // Logic: there are (numPoints - subdivisions) quads, and each quad has 2 triangles,
+        // Logic: there are (numPoints - 2 * subdivisions) quads, and each quad has 2 triangles,
         // and each triangle has 3 points
-        triangles = new int[(numPoints - subdivisions) * 6];
+        triangles = new int[(numPoints - 2 * subdivisions) * 6];
 
         // set up the vertices accordingly
-        for (int i = 0; i < subdivisions; i++) // for each rotated plane
+        for (int i = 0; i < subdivisions + 1; i++) // for each rotated plane, including the duplicate
         {
             float currRotation = (2 * PI) * i / subdivisions;
             for (int j = 0; j < curvePoints.Count; j++) // for each point on this particular plane
@@ -118,14 +118,15 @@ public class SurfaceOfRevolution : MonoBehaviour
             }
         }
 
+
         // set up the triangles accordingly
-        for (int i = 0; i < subdivisions; i++) // for each rotated plane
+        for (int i = 0; i < subdivisions; i++) // for each rotated plane, excluding the duplicate
         {
             for (int j = 0; j < numSlices; j++) // for each quad on this plane (1 per horizontal slice)
             {
                 // define the current quad's vertices
                 int bottomLeftIndex = i * curvePoints.Count + j;
-                int bottomRightIndex = (i + 1) % subdivisions * curvePoints.Count + j;
+                int bottomRightIndex = (i + 1) * curvePoints.Count + j;
                 int topLeftIndex = bottomLeftIndex + 1;
                 int topRightIndex = bottomRightIndex + 1;
 
@@ -142,36 +143,46 @@ public class SurfaceOfRevolution : MonoBehaviour
         }
 
         // calculate normal vectors
-        for (int i = 0; i < triangles.Length; i += 3) { // for each triangle
+        for (int i = 0; i < triangles.Length; i += 3)
+        { // for each triangle
             // calculate triangle's normal vector
             Vector3 A = vertices[triangles[i]];
-            Vector3 B = vertices[triangles[i+1]];
-            Vector3 C = vertices[triangles[i+2]];
+            Vector3 B = vertices[triangles[i + 1]];
+            Vector3 C = vertices[triangles[i + 2]];
             Vector3 normal = Vector3.Cross((A - B), (A - C));
 
             // add vector to the included vertices' normal vectors
             normals[triangles[i]] += normal;
-            normals[triangles[i+1]] += normal;
-            normals[triangles[i+2]] += normal;
+            normals[triangles[i + 1]] += normal;
+            normals[triangles[i + 2]] += normal;
         }
+
+        // handle the normals for the duplicate vertices
+        for (int j = 0; j < curvePoints.Count; j++) {
+            normals[curvePoints.Count * subdivisions + j] = normals[j];
+        }
+
         // normalize each vertices' normal vector
-        for (int i = 0; i < normals.Length; i++) {
+        for (int i = 0; i < normals.Length; i++)
+        {
             normals[i] = normals[i].normalized;
         }
 
-        // calculate UV vectors
+        // calculate arc-length for interpolation
         float curveLength = 0;
         for (int j = 1; j < curvePoints.Count; j++) {
             curveLength += (curvePoints.ElementAt(j) - curvePoints.ElementAt(j - 1)).magnitude;
         }
-
-        for (int i = 0; i < subdivisions; i++)
+        
+        // calculate UV vectors
+        for (int i = 0; i < subdivisions + 1; i++)
         { // for each rotated plane
-            float u = (float)i / (subdivisions - 1); // 0 to 1 around the full circle
+            float u = (float)i / subdivisions; // 0 to 1 around the full circle
             float vNum = 0;
             for (int j = 0; j < curvePoints.Count; j++)
             { // for each horizontal slice
-                if (j != 0) {
+                if (j != 0)
+                {
                     vNum += (curvePoints.ElementAt(j) - curvePoints.ElementAt(j - 1)).magnitude;
                 }
                 float v = vNum / curveLength;
